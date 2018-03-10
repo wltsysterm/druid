@@ -1,0 +1,128 @@
+<?mybatisxml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+	http://www.springframework.org/schema/beans/spring-beans.xsd
+	http://www.springframework.org/schema/aop
+	http://www.springframework.org/schema/aop/spring-aop.xsd 
+	http://www.springframework.org/schema/tx
+    http://www.springframework.org/schema/tx/spring-tx.xsd
+	">
+    <!-- 启用CGliB -->
+    <aop:aspectj-autoproxy proxy-target-class="true"/>
+
+    <!-- 测试库 数据源-->
+    <bean name="test" class="com.alibaba.druid.pool.DruidDataSource" init-method="init"
+          destroy-method="close">
+        <property name="url" value="jdbc:mysql://127.0.0.1:3306/test"/>
+        <property name="username" value="root"/>
+        <property name="password" value="root"/>
+        <!-- 初始化连接大小 -->
+        <property name="initialSize" value="0"/>
+        <!-- 连接池最大使用连接数量 -->
+        <property name="maxActive" value="5"/>
+        <!-- 连接池最小空闲 -->
+        <property name="minIdle" value="0"/>
+        <!-- 获取连接最大等待时间 -->
+        <property name="maxWait" value="60000"/>
+        <property name="validationQuery" value="SELECT 1 FROM DUAL"/>
+        <property name="testOnBorrow" value="false"/>
+        <property name="testOnReturn" value="false"/>
+        <property name="testWhileIdle" value="true"/>
+        <!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+        <property name="timeBetweenEvictionRunsMillis" value="60000"/>
+        <!-- 配置一个连接在池中最小生存的时间，单位是毫秒 -->
+        <property name="minEvictableIdleTimeMillis" value="25200000"/>
+        <property name="removeAbandoned" value="true"/>
+        <property name="removeAbandonedTimeout" value="1800"/>
+        <!-- 关闭abanded连接时输出错误日志 -->
+        <property name="logAbandoned" value="true"/>
+        <!-- 监控数据库 -->
+        <property name="filters" value="mergeStat"/>
+    </bean>
+    <!--<bean id="test" class="org.springframework.jndi.JndiObjectFactoryBean">-->
+        <!--<property name="jndiName">-->
+            <!--<value>java:comp/env/jdbc/wltdb</value>-->
+        <!--</property>-->
+    <!--</bean>-->
+    <bean id="dataSource" class="com.wlt.core.common.dynamicdb.DynamicDataSource">
+        <property name="defaultTargetDataSource" ref="test"/>
+        <property name="targetDataSources">
+            <map key-type="java.lang.String">
+                <!--key="test"，key就是lookupkey-->
+                <entry key="test" value-ref="test"/>
+                <!--可以配置多个数据源-->
+                <!--<entry key="money" value-ref="money"/>-->
+            </map>
+        </property>
+    </bean>
+
+    <!-- Spring整合Mybatis -->
+    <bean id="sqlSessionFactory" class="com.baomidou.mybatisplus.spring.MybatisSqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <!-- 自动扫描Mapping.xml文件 -->
+        <property name="mapperLocations" value="classpath*:mybatisxml/**/*Mapper.xml"/>
+        <property name="configLocation" value="classpath:mybatisxml/mybatis-config.xml"/>
+        <property name="typeAliasesPackage" value="com.wlt.biz.entity"/>
+        <property name="plugins">
+            <array>
+                <!-- 分页插件配置 -->
+                <bean id="paginationInterceptor" class="com.baomidou.mybatisplus.plugins.PaginationInterceptor">
+                    <!--
+                        MYSQL->`mysql`
+                        ORACLE->`oracle`
+                        DB2->`db2`
+                        H2->`h2`
+                        HSQL->`hsql`
+                        SQLITE->`sqlite`
+                        POSTGRE->`postgresql`
+                        SQLSERVER2005->`sqlserver2005`
+                        SQLSERVER->`sqlserver`
+                    -->
+                    <property name="dialectType" value="mysql"/>
+                </bean>
+            </array>
+        </property>
+        <!-- MP 全局配置注入 -->
+        <property name="globalConfig" ref="globalConfig"/>
+    </bean>
+    <bean id="globalConfig" class="com.baomidou.mybatisplus.entity.GlobalConfiguration">
+        <!--
+            AUTO->`0`("数据库ID自增")QW
+             INPUT->`1`(用户输入ID")
+            ID_WORKER->`2`("全局唯一ID")
+            UUID->`3`("全局唯一ID")
+        -->
+        <property name="idType" value="3"/>
+    </bean>
+    <!-- MyBatis 动态实现  -->
+    <bean id="mapperScannerConfigurer" class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <!-- 对Dao 接口动态实现，需要知道接口在哪  -->
+        <property name="basePackage" value="com.wlt.biz.mapper"/>
+    </bean>
+
+    <!-- 配置事务管理器 -->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!-- 启用支持Annotation注解方式的事务管理 -->
+    <tx:annotation-driven transaction-manager="transactionManager" order="2"/>
+
+    <!--aop 换源-->
+    <bean id="dataSourceInterceptor"
+          class="com.wlt.core.common.dynamicdb.DataSourceInterceptor"/>
+    <aop:config>
+        <aop:aspect  ref="dataSourceInterceptor" order="0">
+            <aop:pointcut id="testpoint"
+                          expression="execution(* com.wlt.biz.service.test..*.*(..))"/>
+            <aop:before method="setTest" pointcut-ref="testpoint"/>
+        </aop:aspect>
+        <aop:aspect  ref="dataSourceInterceptor" order="0">
+            <aop:pointcut id="dbAll" expression="execution(* com.baomidou.mybatisplus.service..*.*(..))"/>
+            <aop:before method="setDb" pointcut-ref="dbAll"/>
+        </aop:aspect>
+    </aop:config>
+</beans>
+
