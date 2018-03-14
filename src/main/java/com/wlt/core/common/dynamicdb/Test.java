@@ -1,6 +1,7 @@
 package com.wlt.core.common.dynamicdb;
 
 /**
+ * 枚举学习
  * @author 魏霖涛
  * @since 2018/3/7 0007
  */

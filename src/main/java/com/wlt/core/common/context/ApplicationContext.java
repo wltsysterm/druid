@@ -11,12 +11,12 @@ import javax.servlet.ServletContextListener;
  * @author 魏霖涛
  * @since 2018/3/10 0010
  */
-@Component
 public class ApplicationContext implements ServletContextListener {
     @Autowired
     private GlobalConfig globalConfig;
     @Override
     public void contextInitialized(ServletContextEvent sce) {
+        System.out.println("getBean方式"+SpringUtils.getBean("globalConfig"));
         System.out.println("listener容器启动的时候还没有注入"+globalConfig);
     }
 

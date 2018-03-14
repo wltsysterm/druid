@@ -22,4 +22,5 @@
     <bean class="com.wlt.GlobalConfig">
         <property name="name" value="111"/>
     </bean>
+    <bean id="springUtil" class="com.wlt.core.common.context.SpringUtils"/>
 </beans>
