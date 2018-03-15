@@ -11,10 +11,25 @@
 	">
     <!-- 启用CGliB -->
     <aop:aspectj-autoproxy proxy-target-class="true"/>
-
+    <!-- 慢SQL记录 -->
+    <bean id="stat-filter" class="com.alibaba.druid.filter.stat.StatFilter">
+        <!-- 慢sql时间设置,即执行时间大于20毫秒的都是慢sql -->
+        <property name="slowSqlMillis" value="1"/>
+        <property name="logSlowSql" value="true"/>
+    </bean>
+    <bean id="log-filter" class="com.alibaba.druid.filter.logging.Slf4jLogFilter">
+        <property name="dataSourceLogEnabled" value="true" />
+        <property name="statementExecutableSqlLogEnable" value="true" />
+    </bean>
     <!-- 测试库 数据源-->
     <bean name="test" class="com.alibaba.druid.pool.DruidDataSource" init-method="init"
           destroy-method="close">
+        <property name="proxyFilters">
+            <list>
+                <ref bean="stat-filter"/>
+                <ref bean="log-filter"/>
+            </list>
+        </property>
         <property name="url" value="jdbc:mysql://127.0.0.1:3306/test"/>
         <property name="username" value="root"/>
         <property name="password" value="root"/>
@@ -110,6 +125,22 @@
     <!-- 启用支持Annotation注解方式的事务管理 -->
     <tx:annotation-driven transaction-manager="transactionManager" order="2"/>
 
+    <bean id="druid-stat-interceptor"
+          class="com.alibaba.druid.support.spring.stat.DruidStatInterceptor">
+    </bean>
+
+    <bean id="druid-stat-pointcut" class="org.springframework.aop.support.JdkRegexpMethodPointcut"
+          scope="prototype">
+        <property name="patterns">
+            <list>
+                <value>com.wlt.*</value>
+            </list>
+        </property>
+    </bean>
+
+    <aop:config>
+        <aop:advisor advice-ref="druid-stat-interceptor" pointcut-ref="druid-stat-pointcut"/>
+    </aop:config>
     <!--aop 换源-->
     <bean id="dataSourceInterceptor"
           class="com.wlt.core.common.dynamicdb.DataSourceInterceptor"/>
